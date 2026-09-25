@@ -110,4 +110,43 @@ mod min_milestone_duration_tests {
         );
         assert_eq!(result, 0);
     }
+
+    /// Pre-existing milestones created with a valid duration are not
+    /// re-validated when subsequent milestones use a shorter duration.
+    /// This documents the compile-time-constant behavior: only newly created
+    /// milestones are subject to `MIN_MILESTONE_DURATION_LEDGERS`, existing
+    /// milestones retain their original deadlines without re-checking.
+    #[test]
+    fn test_pre_existing_milestone_not_affected_by_subsequent_rejection() {
+        let (env, admin, client) = setup();
+        let (escrow_client, escrow_id) = make_escrow(&env, &admin, &client, 100);
+
+        let current_ledger = env.ledger().sequence();
+        let deadline = current_ledger + MIN_MILESTONE_DURATION_LEDGERS;
+
+        let first = client.create_milestone(
+            &escrow_client,
+            &escrow_id,
+            &String::from_str(&env, "First"),
+            &BytesN::from_array(&env, &[1; 32]),
+            &100,
+            &Some(deadline),
+        );
+        assert_eq!(first, 0);
+
+        let short_deadline = current_ledger + MIN_MILESTONE_DURATION_LEDGERS - 1;
+        let second = client.try_create_milestone(
+            &escrow_client,
+            &escrow_id,
+            &String::from_str(&env, "Second"),
+            &BytesN::from_array(&env, &[2; 32]),
+            &100,
+            &Some(short_deadline),
+        );
+        assert_eq!(second, Err(Ok(EscrowError::MilestoneTooShort)));
+
+        let milestones = client.get_milestones(&escrow_client, &escrow_id);
+        assert_eq!(milestones.len(), 1);
+        assert_eq!(milestones.get(0).unwrap().description_hash, BytesN::from_array(&env, &[1; 32]));
+    }
 }

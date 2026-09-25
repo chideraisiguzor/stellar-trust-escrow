@@ -358,3 +358,26 @@ There is no path to convert v2 storage back to v1.
 | `current_version > STORAGE_VERSION` — running WASM is older than stored data | Deploy the correct (newer) WASM version. Do not attempt to run v1 code on v2 storage.                                          |
 | Corrupted v1 data that cannot be deserialised as `EscrowStateV1`             | Inspect the raw storage entry. If the data is unrecoverable, the escrow must be treated as lost. Contact the team immediately. |
 | `migrate_v1_to_v2` panics mid-loop                                           | Soroban transactions are atomic — no partial writes will have been committed. Re-run `upgrade` after diagnosing the cause.     |
+
+---
+
+## Minimum Milestone Duration Changes
+
+`MIN_MILESTONE_DURATION_LEDGERS` (currently 100 ledgers, ~8 minutes on Stellar)
+is a compile-time constant. It is **not** stored in contract state and is **not**
+migrated during storage upgrades.
+
+### Migration expectations
+
+- When the contract WASM is upgraded with a new `MIN_MILESTONE_DURATION_LEDGERS`
+  value, **only newly created milestones** are subject to the new minimum.
+- **Pre-existing milestones** that were created under the old constant keep their
+  original deadlines and are not re-validated. A milestone that was valid under
+  a shorter minimum remains valid after upgrade.
+- There is no migration step for this constant: no storage entries reference it,
+  and changing it does not require re-deploying escrow data.
+- Lowering the minimum in a future upgrade is safe — it only relaxes the check
+  for new milestones.
+- Raising the minimum in a future upgrade is also safe for existing data —
+  pre-existing milestones are grandfathered. Only new `create_milestone` calls
+  with insufficient duration will be rejected.
