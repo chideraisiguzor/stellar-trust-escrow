@@ -28,6 +28,7 @@ import docsRouter from './docs/index.js';
 import disputeRoutes from './api/routes/disputeRoutes.js';
 import searchRoutes from './api/routes/searchRoutes.js';
 import escrowRoutes from './api/routes/escrowRoutes.js';
+import transferRequestRoutes from './api/routes/transferRequestRoutes.js';
 import apiKeyRoutes from './api/routes/apiKeyRoutes.js';
 import eventRoutes from './api/routes/eventRoutes.js';
 import kycRoutes from './api/routes/kycRoutes.js';
@@ -208,6 +209,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tenant', tenantRoutes);
 app.use('/api/escrows', escrowRoutes);
 app.use('/api/v1/escrows', escrowRoutes);
+app.use('/api/transfer-requests', transferRequestRoutes);
+app.use('/api/v1/transfer-requests', transferRequestRoutes);
 app.use('/api/api-keys', apiKeyRoutes);
 app.use('/api/v1/api-keys', apiKeyRoutes);
 

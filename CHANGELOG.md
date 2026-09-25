@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Ownership transfer requests, backend foundation (#591): `OwnershipTransferRequest` model and migration, `POST /api/transfer-requests` (escrow client only, Active escrow, recipient not a party, one pending request per escrow, 7-day expiry) and `GET /api/transfer-requests?direction=incoming|outgoing` (pending, unexpired). Accept/reject and the dashboard card are not in this change
+
 - Runnable Soroban CLI simulation scripts for all major escrow lifecycle scenarios in `scripts/simulate/`: happy-path release, arbiter dispute resolution (buyer's favour), expiry refund, and mutual cancellation (#112)
 
 - GitHub Actions CI workflow with lint, backend/frontend/contract tests, and WCAG AA accessibility scan job that uploads HTML reports and blocks PRs on threshold violations (#912)

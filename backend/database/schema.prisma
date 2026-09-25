@@ -1138,6 +1138,28 @@ model EscrowOwnership {
   @@map("escrow_ownership")
 }
 
+/// Off-chain request to hand an escrow's client role to another address.
+/// The recipient accepts or rejects it; on acceptance the current client
+/// still signs `transfer_client_role` on-chain, which is what actually
+/// moves the role.
+model OwnershipTransferRequest {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  escrowId    BigInt    @map("escrow_id")
+  fromAddress String    @map("from_address")
+  toAddress   String    @map("to_address")
+  /// pending | accepted | rejected | cancelled
+  status      String    @default("pending")
+  expiresAt   DateTime  @map("expires_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  respondedAt DateTime? @map("responded_at")
+
+  @@index([toAddress, status])
+  @@index([fromAddress, status])
+  @@index([escrowId, status])
+  @@map("ownership_transfer_requests")
+}
+
 model OwnershipTransferLog {
   id        String   @id @default(cuid())
   escrowId  String   @map("escrow_id")
