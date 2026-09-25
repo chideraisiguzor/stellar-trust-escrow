@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Evidence scan status UI component (#593): `EvidenceScanStatus` shows pending, clean, infected, error and skipped scan states with state-specific copy, links only to clean files, and treats unknown statuses as pending. Wiring it into the evidence pages and withholding file URLs server-side are not in this change
+
 - Feature flag audit entries now record the flag's state before and after each change (#592), so a diff view can show what changed; the audit actor is the admin id instead of the raw `x-admin-api-key` header, which was being written into the audit log. The frontend diff view is not in this change
 
 - Ownership transfer requests, backend foundation (#591): `OwnershipTransferRequest` model and migration, `POST /api/transfer-requests` (escrow client only, Active escrow, recipient not a party, one pending request per escrow, 7-day expiry) and `GET /api/transfer-requests?direction=incoming|outgoing` (pending, unexpired). Accept/reject and the dashboard card are not in this change
