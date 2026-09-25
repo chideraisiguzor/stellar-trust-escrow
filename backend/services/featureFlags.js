@@ -84,6 +84,21 @@ export async function listFlags(tenantId) {
 }
 
 /**
+ * The rollout-relevant state of a flag, recorded in audit entries so a
+ * change can be shown as a before/after diff.
+ */
+function flagSnapshot(flag) {
+  if (!flag) return null;
+  return {
+    isEnabled: flag.isEnabled,
+    percentage: flag.percentage,
+    targetUsers: flag.targetUsers ?? [],
+    description: flag.description ?? '',
+    tenantId: flag.tenantId ?? null,
+  };
+}
+
+/**
  * Create a new feature flag.
  */
 export async function createFlag(
@@ -94,7 +109,7 @@ export async function createFlag(
     data: { key, tenantId, isEnabled, percentage, targetUsers, description },
   });
   await _invalidateFlagCache(key, tenantId);
-  await _auditFlagChange('FLAG_CREATED', flag.key, adminId, { isEnabled, percentage, tenantId });
+  await _auditFlagChange('FLAG_CREATED', flag.key, adminId, { after: flagSnapshot(flag) });
   return flag;
 }
 
@@ -102,12 +117,16 @@ export async function createFlag(
  * Update an existing flag. Logs every change.
  */
 export async function updateFlag(key, patch, adminId) {
+  const before = await prisma.featureFlag.findUnique({ where: { key } });
   const flag = await prisma.featureFlag.update({
     where: { key },
     data: patch,
   });
   await _invalidateFlagCache(key, flag.tenantId);
-  await _auditFlagChange('FLAG_UPDATED', key, adminId, patch);
+  await _auditFlagChange('FLAG_UPDATED', key, adminId, {
+    before: flagSnapshot(before),
+    after: flagSnapshot(flag),
+  });
   return flag;
 }
 
@@ -118,7 +137,7 @@ export async function deleteFlag(key, adminId) {
   const flag = await prisma.featureFlag.findUnique({ where: { key } });
   await prisma.featureFlag.delete({ where: { key } });
   await _invalidateFlagCache(key, flag?.tenantId);
-  await _auditFlagChange('FLAG_DELETED', key, adminId, {});
+  await _auditFlagChange('FLAG_DELETED', key, adminId, { before: flagSnapshot(flag) });
 }
 
 async function _invalidateFlagCache(key, tenantId) {

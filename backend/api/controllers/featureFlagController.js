@@ -1,5 +1,14 @@
 import { listFlags, createFlag, updateFlag, deleteFlag } from '../../services/featureFlags.js';
 
+/**
+ * Identity recorded as the audit actor: the admin id from the session token,
+ * or the fixed id set for API-key auth. Never the raw `x-admin-api-key`
+ * header, which would write the admin secret into the audit log.
+ */
+function auditActor(req) {
+  return req.admin?.adminId ?? req.adminId ?? 'admin';
+}
+
 export async function index(req, res) {
   const tenantId = req.query.tenantId || req.tenant?.id || null;
   const flags = await listFlags(tenantId);
@@ -8,7 +17,7 @@ export async function index(req, res) {
 
 export async function create(req, res) {
   try {
-    const adminId = req.headers['x-admin-api-key'];
+    const adminId = auditActor(req);
     const tenantId = req.body.tenantId || req.tenant?.id || null;
     const flag = await createFlag({ ...req.body, tenantId }, adminId);
     res.status(201).json({ data: flag });
@@ -21,7 +30,7 @@ export async function create(req, res) {
 export async function update(req, res) {
   try {
     const key = req.params.key || req.params.name;
-    const adminId = req.headers['x-admin-api-key'];
+    const adminId = auditActor(req);
     const flag = await updateFlag(key, req.body, adminId);
     res.json({ data: flag });
   } catch (err) {
@@ -33,7 +42,7 @@ export async function update(req, res) {
 export async function destroy(req, res) {
   try {
     const key = req.params.key || req.params.name;
-    const adminId = req.headers['x-admin-api-key'];
+    const adminId = auditActor(req);
     await deleteFlag(key, adminId);
     res.status(204).end();
   } catch (err) {

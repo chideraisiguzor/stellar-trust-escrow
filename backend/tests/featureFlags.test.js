@@ -35,7 +35,9 @@ const prismaMock = {
 
 jest.unstable_mockModule('../lib/prisma.js', () => ({ default: prismaMock }));
 
-const { isFeatureEnabled, createFlag, updateFlag } = await import('../services/featureFlags.js');
+const { isFeatureEnabled, createFlag, updateFlag, deleteFlag } =
+  await import('../services/featureFlags.js');
+const featureFlagController = await import('../api/controllers/featureFlagController.js');
 
 describe('Feature Flags Service', () => {
   beforeEach(() => {
@@ -107,6 +109,73 @@ describe('Feature Flags Service', () => {
       const calls = prismaMock.auditLog.create.mock.calls;
       expect(calls[0][0].data).toMatchObject({ action: 'FLAG_CREATED', resourceId: 'audit-test' });
       expect(calls[1][0].data).toMatchObject({ action: 'FLAG_UPDATED', resourceId: 'audit-test' });
+    });
+
+    it('records the flag state before and after each change, for diffing (#592)', async () => {
+      prismaMock.auditLog.create.mockClear();
+      await createFlag(
+        { key: 'diff-test', isEnabled: false, percentage: 10, targetUsers: ['u1'] },
+        'admin-1',
+      );
+      await updateFlag(
+        'diff-test',
+        { isEnabled: true, percentage: 50, targetUsers: ['u1', 'u2'] },
+        'admin-1',
+      );
+      await deleteFlag('diff-test', 'admin-1');
+
+      const [created, updated, deleted] = prismaMock.auditLog.create.mock.calls.map(
+        ([arg]) => arg.data.metadata,
+      );
+      expect(created).toEqual({
+        after: {
+          isEnabled: false,
+          percentage: 10,
+          targetUsers: ['u1'],
+          description: '',
+          tenantId: null,
+        },
+      });
+      expect(updated).toEqual({
+        before: {
+          isEnabled: false,
+          percentage: 10,
+          targetUsers: ['u1'],
+          description: '',
+          tenantId: null,
+        },
+        after: {
+          isEnabled: true,
+          percentage: 50,
+          targetUsers: ['u1', 'u2'],
+          description: '',
+          tenantId: null,
+        },
+      });
+      expect(deleted.before).toMatchObject({ isEnabled: true, percentage: 50 });
+    });
+
+    it('never records the raw admin API key as the audit actor (#592)', async () => {
+      prismaMock.auditLog.create.mockClear();
+      const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+        end: jest.fn(),
+      };
+      const req = {
+        headers: { 'x-admin-api-key': 'super-secret-admin-key' },
+        adminId: 'admin',
+        body: { key: 'actor-test', isEnabled: true },
+        params: {},
+      };
+
+      await featureFlagController.create(req, res);
+
+      const { actor } = prismaMock.auditLog.create.mock.calls[0][0].data;
+      expect(actor).toBe('admin');
+      expect(JSON.stringify(prismaMock.auditLog.create.mock.calls)).not.toContain(
+        'super-secret-admin-key',
+      );
     });
   });
 
